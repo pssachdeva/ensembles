@@ -5,28 +5,75 @@ import sys
 import h5py
 import matplotlib.pyplot as plt
 
-def get_exp_container_dataframe(exp_container):
-    '''Creates  a panda dataframe for a single experimental container.
-    INPUT: 
-    	exp_container: the experimental container id for one mouse
-    OUTPUT: 
-    	expt_container_df: dataframe for all experimental data corresponding to a single experimental container id"""
+def cre_2_layer(cre_line):
+    '''Returns the layer associated with a given Cre line. 
+
+    Parameters
+    ----------
+    cre_line:
+        string detailing the specific Cre line.
+
+    Returns
+    -------
+    unspecified variable:
+        the specific layer associated with a given Cre line. 
     '''
-    # Information 
-    exp_session_info = boc.get_ophys_experiments(experiment_container_ids=[exp_container]) 
-    # Create Data Frame of experimental sessions in our container
+    if cre_line == 'Cux2-CreERT2':
+        return 'Layer 2/3 & 4'
+    elif cre_line == 'Emx1-IRES-Cre':
+        return 'Pan excitatory expression'
+    elif cre_line == 'Nr5a1-Cre':
+        return 'Layer 4'
+    elif cre_line == 'Rbp4-Cre_KL100':
+        return 'Layer 5'
+    elif cre_line == 'Rorb-IRES2-Cre':
+        return 'Layer 4'
+    elif cre_line == 'Scnn1a-Tg3-Cre':
+        return 'Layer 4'
+    else:
+        return ValueError('Cre line not found.')
+
+def get_exp_container_dataframe(boc, exp_container_id):
+    '''Creates a pandas dataframe for a single experimental container.
+    
+    Parameters
+    ---------- 
+    boc:
+        BrainObservatoryCache variable 
+
+    exp_container: 
+        the experimental container id for one mouse
+    
+    Returns
+    ------- 
+    expt_container_df: 
+        dataframe for all experimental data corresponding to a single experimental container id
+    '''
+    # grab the session info for the given experiment 
+    exp_session_info = boc.get_ophys_experiments(experiment_container_ids=[exp_container_id]) 
+    # create data frame of experimental sessions in our container
     exp_session_df = pd.DataFrame(exp_session_info) 
     return exp_session_df
 
 def get_session_ids(boc, exp_list):
-    '''
-    INPUT: 
-   		exp_list: a list of experimental containers id's of mice of interest
-    OUTPUT: 
-    	session_ids: a dictionary where each key is an experimental container id
-        			its corresponding value is a dictionary pairing session type [A,B,C/C2] with session ID
-    NOTE: C and C2 are mutually exclusive options. Mice run before 09/2016 at the Allen are run on procedure C
-        After this date, an additional sparse noise stimuli is added to the session and it is renamed session C2 for all future mice
+    '''Extracts the session ids for a given list of experiment container ids.
+
+    Parameters
+    ----------
+
+    boc:
+        BrainObservatoryCache variable 
+
+   	exp_list: 
+        a list of experimental containers ids for the mice of interest
+    
+    Returns
+    ------- 
+    session_ids: 
+        a dictionary whose keys are experiment container ids and corresponding values are dictionaries pairing session type [A,B,C/C2] with session ID
+    
+    NOTE: C and C2 are mutually exclusive options. Mice run before 09/2016 at the Allen are run on procedure C.
+    After this date, an additional sparse noise stimuli is added to the session and it is renamed session C2 for all future mice
     '''
     # create empty dictionary using the experiment container ids
     session_ids = {exp_id : {} for exp_id in exp_list}
@@ -43,20 +90,38 @@ def get_session_ids(boc, exp_list):
     	session_ids[exp_id][session_type] = session_id
     return session_ids
 
-def get_dataset(exp_list, session_type, session_ids):
-    """Retrieve datasets of a specific session type for a list of experimental containers
-    INPUT: 
-        exps:list of experimental containers
-        sessiontype: choose from one of the following: ['session_id_A', 'session_id_B', or 'session_id_C']
-        session_ids: Dictionary with output from 'pull_session_id()' function, matches session type with proper id # for each animal
-    OUTPUT: Dictionary where each value is an experimental container id
-                each key if corresponding dataset
-    NOTE: This for loop is inefficient and will take a minute to run"""
-    datasets={}
-    for exp in exps:
-        dataset = boc.get_ophys_experiment_data(ophys_experiment_id=(session_ids[exp][sessiontype]))
-        datasets[exp]=dataset
+def get_dataset(boc, exp_list, session_type):
+    '''Retrieve datasets of a specific session type for a list of experimental containers.
+
+    Parameters
+    ---------- 
+
+    boc:
+        BrainObservatoryCache variable 
+
+    exp_list:
+        list of experimental containers
+    
+    session_type: 
+        choose from one of the following: ['session_id_A', 'session_id_B', or 'session_id_C']
+ 
+    Returns
+    -------
+    datasets:
+        dictionary whose keys are experiment container ids and values are the dataset object
+    '''
+    datasets = {}
+    # grab the session ids
+    session_ids = get_session_ids(boc, exp_list)
+    # iterate over the experiment ids
+    for exp in exp_list:
+        # grab the dataset; oddly enough this function only takes one id at a time 
+        dataset = boc.get_ophys_experiment_data(ophys_experiment_id=(session_ids[exp][session_type]))
+        datasets[exp] = dataset
+
     return datasets
+
+####
 
 def get_epoch_table(exps, datasets):
     '''
