@@ -327,32 +327,3 @@ def get_cell_indices(exps, datasets):
         cell_indices_by_expcontainer[exp]=specimen_index_map
         
     return cell_indices_by_expcontainer
-
-def get_cell_indices(exps, datasets):
-    """Creates a dictionary with values as exp container ids
-        keys are a dictionary containing cell ids paired with cell indices
-        INPUT:
-            exps: list of experimental containers
-            datasets: dataset varialbe attained from function get_dataset()
-        OUTPUT:
-            Dictionary, cell_indices_by_expcontainer, pairing cell indices with cell ids"""
-    cell_indices_by_expcontainer={}
-    
-    for exp in exps:
-    
-        # Create dictionary for id to index map for each exp container
-        specimen_index_map = {}
-    
-        # Get cell specimen ids for session B
-        specimens_lis=datasets[exp].get_cell_specimen_ids()
-    
-        #Get cell indices for session B
-        specimen_id_temp=datasets[exp].get_cell_specimen_indices(specimens_lis)
-    
-        # Create map
-        specimen_index_map.update({spid: spind for spid, spind in zip(specimens_lis, specimen_id_temp)})
-    
-        # Update exp container with id to index map
-        cell_indices_by_expcontainer[exp]=specimen_index_map
-        
-    return cell_indices_by_expcontainer
