@@ -33,6 +33,47 @@ def cre_2_layer(cre_line):
     else:
         return ValueError('Cre line not found.')
 
+def get_experiment_ids(boc, file_name = None, targeted_structures = None, imaging_depths = None, cre_lines = None, transgenic_lines = None, include_failed = False):
+    '''Returns the experiment ids for experiments that satisfy a variety of constraints.
+
+    Parameters
+    ----------
+    file_name:
+        File name to save/read the experiment containers.  If file_name is None,
+        the file_name will be pulled out of the manifest.  If caching
+        is disabled, no file will be saved. Default is None.
+
+    targeted_structures:
+        List of structure acronyms.  Must be in the list returned by
+        BrainObservatoryCache.get_all_targeted_structures().
+
+    imaging_depths:
+        List of imaging depths.  Must be in the list returned by
+        BrainObservatoryCache.get_all_imaging_depths().
+
+    cre_lines:
+        List of cre lines.  Must be in the list returned by
+        BrainObservatoryCache.get_all_cre_lines().
+
+    transgenic_lines:
+        List of transgenic lines. Must be in the list returned by
+        BrainObservatoryCache.get_all_cre_lines() or.
+        BrainObservatoryCache.get_all_reporter_lines().
+
+    include_failed: boolean
+        Whether or not to include failed experiment containers.
+    
+    Returns
+    -------
+    exp_ids:
+        a list of experiment ids
+    '''
+    # TODO: handle error case (perhaps as an exception)
+    exps = boc.get_experiment_containers(file_name = file_name, targeted_structures = targeted_structures, imaging_depths = imaging_depths, cre_lines = cre_lines, transgenic_lines = transgenic_lines, include_failed = include_failed)
+    exps_df = pd.DataFrame(exps)
+    exp_ids = exps_df['id'].values
+    return exp_ids
+
 def get_exp_container_dataframe(boc, exp_container_id):
     '''Creates a pandas dataframe for a single experimental container.
     
@@ -84,7 +125,12 @@ def get_session_ids(boc, exp_list):
     	# grab the experiment container id, session type, and session id
     	exp_id = session['experiment_container_id']
     	## TODO(?): rename session_id_C2 to session_id_C (although this may not be necessary)
-    	session_type = session['session_type']
+        if session['session_type'] == 'three_session_A':
+            session_type = 'session_A'
+        elif session['session_type'] == 'three_session_B':
+            session_type = 'session_B'
+        else:
+            session_type = 'session_C'
     	session_id = session['id']
     	# toss the session id into the corresponding dictionary
     	session_ids[exp_id][session_type] = session_id
@@ -103,7 +149,7 @@ def get_dataset(boc, exp_list, session_type):
         list of experimental containers
     
     session_type: 
-        choose from one of the following: ['session_id_A', 'session_id_B', or 'session_id_C']
+        choose from one of the following: ['session_A', 'session_B', or 'session_C']
  
     Returns
     -------
@@ -121,71 +167,70 @@ def get_dataset(boc, exp_list, session_type):
 
     return datasets
 
-####
-
-def get_epoch_table(exps, datasets):
+def get_epoch_table(datasets):
+    '''Creates a dictionary whose keys are experiment container ids and values are the epoch table corresponding to that experiment. 
+    
+    Parameters
+    ---------- 
+    exps: 
+        list of experimental containers
+    
+    datasets: 
+        dataset varialbe attained from function get_dataset()
+     
+    Returns
+    ------- 
+    epoch_table: 
+        list of epochs (stimulus type for session type A, B, or C) with start and stop frame numbers for each epoch
     '''
-    Creates dictionary where value is experimental container number key is the epoch table associated with exp container for a given session type
-     INPUT:
-        exps: list of experimental containers
-        datasets: dataset varialbe attained from function get_dataset()
-     OUTPUT: 
-         epochtable: list of epochs (stimulus type for session type A, B, or C) with start and stop frame numbers for each epoch
-            note: each exp container has its own unique epochtable
-    NOTE: This for loop will take at least 5 minutes to run
+    epoch_table = {}
+    # iterate over the sessions provided in the datasets
+    for session_id in datasets:
+        # extract the epoch table using the provided function
+        epoch_table[session_id] = datasets[session_id].get_stimulus_epoch_table()
+    return epoch_table
+
+def create_delta_traces(datasets):
+    '''Extracts the dFF traces, sorted by stimulus type, from a provided dictionary of NWB datasets.
+
+    Parameters
+    ----------
+    datasets:
+        a dictionary whose keys are session/experiment container ids and values are NWB dataset objects.
+
+    Returns
+    -------
+    dff_by_exp:
+        a nested dictionary. the main keys are the session ids from the datasets dictionary. each value
+        is another dictionary, whose keys are the stimulus type for that session and values are the dFF traces
+        corresponding to that stimulus. note that stimulus types were segmented over a given session: these dFF
+        traces, therefore, are concatenated over the segmented trials. 
     '''
-    epochtable={}
-    for exp in exps:
-        epochtable[exp]=datasets[exp].get_stimulus_epoch_table()
-    return epochtable
+    # intialize the nested dictionary
+    dff_by_exp = {}
+    # iterate over the session ids in the datasets dictionary
+    for session_id in datasets:
+        # extract the epoch table corresponding to that session. we need this to know when stimuli started and stopped
+        epoch_table = datasets[session_id].get_stimulus_epoch_table()
+        # extract the dff traces
+        _, dffs = datasets[session_id].get_dff_traces()
+        # group the epoch table by stimulus type
+        grouped = epoch_table.groupby('stimulus')
+        dff_by_stim = {} # second dictionary, keys will be stimuli
+        # iterate over the stimuli groups
+        for stim, group in grouped:
+            # grab the starting and ending times for each stimulus
+            starts = group.start.values
+            ends = group.end.values
+            # create a list of indices for the stimulus by stringing together the starting and stopping times
+            indices = np.concatenate([np.arange(start, ends[idx]) for idx, start in enumerate(starts)])
+            # use our indices array to add the traces to the dictionary
+            dff_by_stim[stim] = dffs[:, indices]
+        # finally, add the dictionary to the nested dictionary
+        dff_by_exp[session_id] = dff_by_stim
+    return dff_by_exp
 
-def create_delta_traces(datasets, exps, epochtable):
-    """Retrieve calcium traces by epoch (stimulus type) from a dictionary of datasets of a given type (session A, B, or C)
-            for a list of experimental containers.
-            exps must be same list used in get_dataset() function
-            dataset must be generated by get_dataset() function
-    INPUT:
-        exps: list of experimental containers
-        datasets: dataset varialbe attained from function get_dataset()
-        epochtable: use dictionary from get_epoch_tables() function where values=exp cont's and keys=epoch tables
-    OUTPUT: 
-       
-        ca_by_exp: this is a dictionary where each value is an experimental container
-            each key is a nested dictionary where value/key pairs are epoch type and its corresponsing ca2+ trace
-                note: if a stimulus type is present more than once in a session, its traces are concatenated into one trace
-    NOTE: This for loop is inefficient and will take a minute to run
-            """
-    delta_traces={}
-    ca_by_exp={}
-    for exp in exp_lis:
-        X=datasets[exp].get_dff_traces()
-        if exp==exp_lis[0]:
-            epochtable_list=epochtable[exps[0]]['stimulus'].unique()
-        timestamps=X[0]
-        trace=X[1]
-        delta_traces[exp]=[timestamps, trace]
-        ca_trace_by_epoch={}
-        for stim_n in epochtable_list:
-            curr_ca = []
-            for ind, stim_row in epochtable[exps[0]].iterrows():
-                if stim_row['stimulus'] == stim_n:
-                    Ca=delta_traces[exp][1]
-                    curr_ca.append(Ca[:, stim_row['start'] : stim_row['end']])
-            curr_ca = np.concatenate(curr_ca, axis=1)
-            ca_trace_by_epoch[stim_n] = curr_ca
-        ca_by_exp[exp]=ca_trace_by_epoch
-    return ca_by_exp
-
-def get_epoch_list(exps, epochtable):
-    """Creates list of stimulus types for given session
-     INPUT:
-        exps: list of experimental containers
-        epochtalbe: Use epochtable attained from function get_epoch_table
-     OUTPUT: 
-         epochtable_list: a list of epoch type (stimulus type) for a given session type (A, B, or C)
-            note: this is universal for all experimental containers and only indicates stimulus type present in session"""
-    epochtable_list=epochtable[exps[0]]['stimulus'].unique()
-    return epochtable_list
+### TODO: go through functions below
 
 def get_stim_dict(exps, datasets):
     """ Creates dictionary to determine timing of different images in natural scenes epoch
@@ -282,59 +327,6 @@ def get_cell_indices(exps, datasets):
         cell_indices_by_expcontainer[exp]=specimen_index_map
         
     return cell_indices_by_expcontainer
-
-def get_responsivity_status(exps, cell_specimens, sessiontype):
-    """ Creates a dictionary cell_categories
-        Value=exp container id
-        keys= dictionaries for different categories of responsivity
-    Input:
-        exps: list of experimental containers
-        cell_specimens=DataFrame for all cell related information for Brain Observatory cache
-        sessiontype: choose from one of the following: ['session_id_A', 'session_id_B', or 'session_id_C']
-    Output:
-        cell_categories:dictionary of dictionaries indicating responsivity profiles
-    """
-    ns_nor_={}
-    sg_nor_={}
-    dg_nor_={}
-    nor_={}
-    all_={}
-
-    for exp in exps:
-        #Isolate cells for experimental container id
-        expt_container_id=exp
-        specimens=cell_specimens[(cell_specimens['experiment_container_id']==expt_container_id)]
-        all_[exp]=specimens['cell_specimen_id']
-    
-        #Totally non-responsive cells
-        isnor = ((specimens.p_dg>0.05) | (specimens.peak_dff_dg<3)) & ((specimens.p_sg>0.05) | (specimens.peak_dff_sg<3)) & ((specimens.p_ns>0.05) | (specimens.peak_dff_ns<3)) & (specimens.rf_chi2_lsn>0.05)
-        nor=specimens[isnor] 
-        nor_[exp]=nor['cell_specimen_id']
-    
-        #Non-responsive to ns
-        if sessiontype=='session_id_B':
-            isepochnor=((specimens.p_ns>0.05) | (specimens.peak_dff_ns<3))
-            ns_nor=specimens[~isnor & isepochnor]
-            ns_nor_[exp]=ns_nor['cell_specimen_id']
-    
-        #Non-responsive to dg
-        if sessiontype=='session_id_A':
-            isepochnor=((specimens.p_dg>0.05) | (specimens.peak_dff_dg<3))
-            dg_nor=specimens[~isnor & isepochnor]
-            dg_nor_[exp]=dg_nor['cell_specimen_id']
-    
-        #Non-responsive to sg
-        if sessiontype=='session_id_B':
-            isepochnor=((specimens.p_sg>0.05) | (specimens.peak_dff_sg<3))
-            sg_nor=specimens[~isnor & isepochnor]
-            sg_nor_[exp]=sg_nor['cell_specimen_id']
-    if sessiontype=='session_id_A':
-        cell_categories={'nor_':nor_, 'all_':all_, 'dg_nor_':dg_nor_}
-    if sessiontype=='session_id_B':
-        cell_categories={'nor_':nor_, 'ns_nor_':ns_nor_, 'sg_nor_':sg_nor_, 'all_':all_}
-    if sessiontype=='session_id_C':
-        cell_categories={'nor_':nor_, 'all_':all_}
-    return cell_categories
 
 def get_cell_indices(exps, datasets):
     """Creates a dictionary with values as exp container ids
