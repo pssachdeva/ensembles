@@ -1,5 +1,21 @@
-<<<<<<< HEAD
-# NRC
-=======
-ensembles
->>>>>>> 45e38f0e8fb57926e9074236efc5005b3d2436fd
+ensembles 
+
+
+                         .cccc;;cc;';c.           
+                      .,:dkdc:;;:c:,:d:.          
+                     .loc'.,cc::c:::,..;:.        
+                   .cl;....;dkdccc::,...c;        
+                  .c:,';:'..ckc',;::;....;c.      
+                .c:'.,dkkoc:ok:;llllc,,c,';:.     
+               .;c,';okkkkkkkk:;lllll,:kd;.;:,.   
+               co..:kkkkkkkkkk:;llllc':kkc..oNc   
+             .cl;.,oxkkkkkkkkkc,:cll;,okkc'.cO;   
+             ;k:..ckkkkkkkkkkkl..,;,.;xkko:',l'   
+            .,...';dkkkkkkkkkkd;.....ckkkl'.cO;   
+         .,,:,.;oo:ckkkkkkkkkkkdoc;;cdkkkc..cd,   
+      .cclo;,ccdkkl;llccdkkkkkkkkkkkkkkkd,.c;     
+     .lol:;;okkkkkxooc::coodkkkkkkkkkkkko'.oc     
+   .c:'..lkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkd,.oc     
+  .lo;,:cdkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkd,.c;     
+,dx:..;lllllllllllllllllllllllllllllllllc'...     
+cNO;........................................      
