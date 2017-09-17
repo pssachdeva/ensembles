@@ -15,7 +15,3 @@ ensembles
          .,,:,.;oo:ckkkkkkkkkkkdoc;;cdkkkc..cd,   
       .cclo;,ccdkkl;llccdkkkkkkkkkkkkkkkd,.c;     
      .lol:;;okkkkkxooc::coodkkkkkkkkkkkko'.oc     
-   .c:'..lkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkd,.oc     
-  .lo;,:cdkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkd,.c;     
-,dx:..;lllllllllllllllllllllllllllllllllc'...     
-cNO;........................................      
