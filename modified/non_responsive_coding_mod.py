@@ -246,57 +246,68 @@ def get_stim_dict(exps, datasets):
         stim_dict[exp]=temp_exp_df.get_stimulus_table(stimulus_name='natural_scenes')
     return stim_dict
 
-def get_responsivity_status(exps, cell_specimens, sessiontype):
+def get_responsivity_status(exp_list, cell_specimens, session_type):
     """ Creates a dictionary cell_categories
         Value=exp container id
         keys= dictionaries for different categories of responsivity
-    Input:
-        exps: list of experimental containers
-        cell_specimens=DataFrame for all cell related information for Brain Observatory cache
-        sessiontype: choose from one of the following: ['session_id_A', 'session_id_B', or 'session_id_C']
-    Output:
-        cell_categories:dictionary of dictionaries indicating responsivity profiles
+    
+    Parameters
+    ----------
+    exp_list: 
+        list of experimental container ids
+    
+    cell_specimens:
+        DataFrame for all cell related information, obtained from the Brain Observatory cache
+    
+    session_type: 
+        choose from one of the following: 'session_A', 'session_B', or 'session_C'
+    
+    Returns
+    -------
+    cell_categories: 
+        dictionary of dictionaries indicating responsivity profiles
     """
-    ns_nor_={}
-    sg_nor_={}
-    dg_nor_={}
-    nor_={}
-    all_={}
+    ns_nor_ = {}
+    sg_nor_ = {}
+    dg_nor_ = {}
+    nor_ = {}
+    all_ = {}
 
-    for exp in exps:
+    for exp in exp_list:
         #Isolate cells for experimental container id
-        expt_container_id=exp
-        specimens=cell_specimens[(cell_specimens['experiment_container_id']==expt_container_id)]
-        all_[exp]=specimens['cell_specimen_id']
+        expt_container_id = exp
+        specimens = cell_specimens[(cell_specimens['experiment_container_id']==expt_container_id)]
+        all_[exp] = specimens['cell_specimen_id']
     
         #Totally non-responsive cells
-        isnor = ((specimens.p_dg>0.05) | (specimens.peak_dff_dg<3)) & ((specimens.p_sg>0.05) | (specimens.peak_dff_sg<3)) & ((specimens.p_ns>0.05) | (specimens.peak_dff_ns<3)) & (specimens.rf_chi2_lsn>0.05)
-        nor=specimens[isnor] 
-        nor_[exp]=nor['cell_specimen_id']
+        isnor = ((specimens.p_dg > 0.05) | (specimens.peak_dff_dg < 3)) & ((specimens.p_sg > 0.05) | (specimens.peak_dff_sg < 3)) & ((specimens.p_ns > 0.05) | (specimens.peak_dff_ns < 3)) & (specimens.rf_chi2_lsn > 0.05)
+        nor = specimens[isnor] 
+        nor_[exp] = nor['cell_specimen_id']
     
         #Non-responsive to ns
-        if sessiontype=='session_id_B':
-            isepochnor=((specimens.p_ns>0.05) | (specimens.peak_dff_ns<3))
-            ns_nor=specimens[~isnor & isepochnor]
-            ns_nor_[exp]=ns_nor['cell_specimen_id']
+        if session_type == 'session_B':
+            isepochnor = ((specimens.p_ns > 0.05) | (specimens.peak_dff_ns < 3))
+            ns_nor = specimens[~isnor & isepochnor]
+            ns_nor_[exp] = ns_nor['cell_specimen_id']
     
         #Non-responsive to dg
-        if sessiontype=='session_id_A':
-            isepochnor=((specimens.p_dg>0.05) | (specimens.peak_dff_dg<3))
-            dg_nor=specimens[~isnor & isepochnor]
-            dg_nor_[exp]=dg_nor['cell_specimen_id']
+        if session_type == 'session_A':
+            isepochnor = ((specimens.p_dg > 0.05) | (specimens.peak_dff_dg < 3))
+            dg_nor = specimens[~isnor & isepochnor]
+            dg_nor_[exp] = dg_nor['cell_specimen_id']
     
         #Non-responsive to sg
-        if sessiontype=='session_id_B':
-            isepochnor=((specimens.p_sg>0.05) | (specimens.peak_dff_sg<3))
-            sg_nor=specimens[~isnor & isepochnor]
-            sg_nor_[exp]=sg_nor['cell_specimen_id']
-    if sessiontype=='session_id_A':
-        cell_categories={'nor_':nor_, 'all_':all_, 'dg_nor_':dg_nor_}
-    if sessiontype=='session_id_B':
-        cell_categories={'nor_':nor_, 'ns_nor_':ns_nor_, 'sg_nor_':sg_nor_, 'all_':all_}
-    if sessiontype=='session_id_C':
-        cell_categories={'nor_':nor_, 'all_':all_}
+        if session_type == 'session_B':
+            isepochnor = ((specimens.p_sg > 0.05) | (specimens.peak_dff_sg < 3))
+            sg_nor = specimens[~isnor & isepochnor]
+            sg_nor_[exp] = sg_nor['cell_specimen_id']
+
+    if session_type=='session_A':
+        cell_categories={'nor_' : nor_, 'all_' : all_, 'dg_nor_' : dg_nor_}
+    if session_type=='session_B':
+        cell_categories={'nor_' : nor_, 'ns_nor_' : ns_nor_, 'sg_nor_' : sg_nor_, 'all_' : all_}
+    if session_type=='session_C':
+        cell_categories={'nor_' : nor_, 'all_' : all_}
     return cell_categories
 
 def get_cell_indices(exps, datasets):
