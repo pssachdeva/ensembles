@@ -338,3 +338,55 @@ def get_cell_indices(exps, datasets):
         cell_indices_by_expcontainer[exp]=specimen_index_map
         
     return cell_indices_by_expcontainer
+
+def get_interstim_traces(boc, session_ids):
+    '''Grabs the inter-stim calcium traces after drifting or static gratings for a set of session ids.
+    
+    Parameters
+    ----------
+    boc:
+        BrainObservatoryCache variable
+
+    session_ids:
+        list of experimental session ids
+
+    Returns
+    -------
+    traces:
+        nested dictionary. the first key is the session id, as given given by session_ids. the corresponding
+        value is another dictionary, whose keys indicate whether the inter-stim trace occurred after
+        static or drifting gratings. the values are the calcium traces themselves. 
+        note that session_C had no inter-stim traces after static/drifting gratings, so these sessions
+        are left empty in the dictionary. 
+    '''
+    traces = {}
+    # iterate over session ids
+    for session_id in session_ids:
+        # grab the dataset
+        dataset = boc.get_ophys_experiment_data(ophys_experiment_id = session_id)
+        # identify what kind of session (A, B, or C) the current session id is
+        session_type = dataset.get_session_type()[-1]
+        if session_type == 'A':
+            # declare empty dictionary
+            traces[session_id] = {}
+            # deduce what the inter-stim period is; for A, it's right after the very first drifting gratings
+            epoch_table = dataset.get_stimulus_epoch_table()
+            interstim_interval = np.arange(epoch_table.iloc[0].end, epoch_table.iloc[1].start)
+            _, dffs = dataset.get_dff_traces()
+            # place trace in the second layer of the nested dictionary
+            traces[session_id]['drifting_gratings'] = dffs[:, interstim_interval]
+        elif session_type == 'B':
+            traces[session_id] = {}
+            epoch_table = dataset.get_stimulus_epoch_table()
+            # inter-stim interval after first static gratings
+            interstim_interval_1 = np.arange(epoch_table.iloc[0].end, epoch_table.iloc[1].start)
+            _, dffs_1 = dataset.get_dff_traces()
+            traces[session_id]['static_gratings_1'] = dffs_1[:, interstim_interval_1]
+            # inter-stim interval after second static gratings
+            interstim_interval_2 = np.arange(epoch_table.iloc[4].end, epoch_table.iloc[5].start)
+            _, dffs_2 = dataset.get_dff_traces()
+            traces[session_id]['static_gratings_2'] = dffs_2[:, interstim_interval_2]     
+        else:
+            # session C has no inter-stim interval right after drifting/static gratings
+            traces[session_id] = ''
+    return traces
