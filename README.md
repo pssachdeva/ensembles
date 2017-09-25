@@ -1,17 +1,3 @@
-ensembles 
+Code to extract ensembles from deconvolved calcium traces. 
 
-
-                         .cccc;;cc;';c.           
-                      .,:dkdc:;;:c:,:d:.          
-                     .loc'.,cc::c:::,..;:.        
-                   .cl;....;dkdccc::,...c;        
-                  .c:,';:'..ckc',;::;....;c.      
-                .c:'.,dkkoc:ok:;llllc,,c,';:.     
-               .;c,';okkkkkkkk:;lllll,:kd;.;:,.   
-               co..:kkkkkkkkkk:;llllc':kkc..oNc   
-             .cl;.,oxkkkkkkkkkc,:cll;,okkc'.cO;   
-             ;k:..ckkkkkkkkkkkl..,;,.;xkko:',l'   
-            .,...';dkkkkkkkkkkd;.....ckkkl'.cO;   
-         .,,:,.;oo:ckkkkkkkkkkkdoc;;cdkkkc..cd,   
-      .cclo;,ccdkkl;llccdkkkkkkkkkkkkkkkd,.c;     
-     .lol:;;okkkkkxooc::coodkkkkkkkkkkkko'.oc     
+To see an example, run the `generate_ensembles.ipynb` notebook, which will produce ensembles from a session in VISrl. 
