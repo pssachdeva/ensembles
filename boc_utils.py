@@ -390,3 +390,152 @@ def get_interstim_traces(boc, session_ids):
             # session C has no inter-stim interval right after drifting/static gratings
             traces[session_id] = ''
     return traces
+
+def get_session_ids_list (exps, session_ids):
+    '''Grabs the inter-stim calcium traces after drifting or static gratings for a set of session ids.
+    
+    Parameters
+    ----------
+    exps:
+        list of experimental containers
+
+    session_ids:
+        list of experimental session ids
+
+    Returns
+    -------
+    session_ids_list:
+        list of session_ids with each of three session id types for each given exp containers. Session ids are not sorted by exp container. 
+    '''
+    session_ids_list=[]
+    for exp in exps:
+        for key, value in session_ids[exp].iteritems():
+            session_ids_list.append(value)
+    return session_ids_list
+
+def get_stim_table(session_ids_list):
+    '''Creates a dictionary whose keys are experiment container ids and values are the epoch table corresponding to that experiment. 
+    
+    Parameters
+    ---------- 
+    exps: 
+        list of experimental containers
+    
+    datasets: 
+        dataset varialbe attained from function get_dataset()
+     
+    Returns
+    ------- 
+    epoch_table: 
+        list of epochs (stimulus type for session type A, B, or C) with start and stop frame numbers for each epoch
+    '''
+    pair_table = {}
+    for session_id in session_ids_list:
+        pair_table[session_id]={}
+        
+        dataset = boc.get_ophys_experiment_data(ophys_experiment_id = session_id)
+        
+        session_type = dataset.get_session_type()[-1]
+        
+        if session_type == 'A':
+            # extract the epoch table using the provided function
+            pair_table[session_id]['drifting_gratings']=dataset.get_stimulus_table(stimulus_name='drifting_gratings')
+        
+        elif session_type == 'B':
+            pair_table[session_id]['static_gratings']=dataset.get_stimulus_table(stimulus_name='static_gratings')
+        
+        else:
+            # session C has no inter-stim interval right after drifting/static gratings
+            continue
+    return stim_table
+
+def stim_to_key(epoch):
+    """
+    PARAMETER:
+        epoch: either 'drifting_grating' OR 'static_gratings'
+    
+    OUTPUT:
+        key name for pair_table dictionary from 'get_pair_table()' f(x) to reference delta traces for a given intertrail interval stim
+        follow form: pair_table[session_id][dg_45_2_1] -- would reference the intertrial interval following 
+        the first drifting gratings stimulus presentation with 45 degree direction and a 2 Hz frequency.
+    """
+    
+    if epoch==drifting_gratings:
+        direction = raw_input("""What is the direction in degrees? 
+        Choose from: 0; 45; 90; 135; 180; 225; 270; 315""")
+        temporal_frequency= raw_input("""What is the temporal frequency in Hz? 
+        Choose from: 1; 2; 4; 8; 15""")
+        sequence_number= raw_input("""If known, what trial # of stimulus type does the interstimulus interval follow
+        Use integer(s), if unknown hit return""")
+        
+        prime='[dg_' + str(direction) + '_' + str(temporal_frequency)+ '_'
+    
+        if sequence_number:
+            output = prime + str(sequence_number)
+        else:
+            output = prime + '"INSERT TRIAL# HERE:1-n in integers"]'
+        
+        return output
+    
+    if epoch==static_gratings:
+        direction = raw_input("""What is the direction in degrees?
+        Choose from: 0; 30; 60; 90; 120; 150""")
+        spatial_frequency= raw_input("""What is the spatial frequency (cycles/degree, 2cm distance)?
+        Choose from: 0.0; 0.02; 0.04; 0.08; 0.16; 0.32""")
+        phase = raw_input("""What is the phase?
+        Choose from: 0.0; 0.25; 0.5; 0.75""")
+        sequence_number= raw_input("""If known, what trial # of stimulus type does the interstimulus interval follow
+        Use integer(s), if unknown hit return""")
+ 
+
+    
+        prime='[sg_' + str(direction) + '_' + str(spatial_frequency)+ '_' + str(phase) + '_'
+    
+        if sequence_number:
+            output = prime + str(sequence_number)
+        else:
+            output = prime + '"INSERT TRIAL# HERE:1-n in integers"]'
+        
+        return output
+def key_to_stim(key):
+    """
+    PARAMTER:
+        key: enter key name as string for pair_table dictionary from 'get_pair_table()' f(x)
+        i.e follow form: '[dg_45_2_1]'
+    OUTPUT:
+        string describing classification of key in regards to stimulus type
+    """
+    
+    temp=[]
+    key_letter_list=[]
+    
+    for letter in key:
+        key_letter_list.append(letter)
+        
+    epoch = "".join(key_letter_list[1:3])
+    
+    direction = "".join(key_letter_list [4:7])
+    
+    #for letter in key_letter_list[8:len(key_letter_list)]:
+    #    if letter!='_':
+    #        temp.append(letter)
+    #    else:
+    #        break
+    
+    if key_letter_list[9]=='.':
+        spatial_frequency = "".join(temp)
+        phase = "".join(key_letter_list[13:17])
+        if len(key_letter_list)==20:
+            sequence_number = key_letter_list[18]
+        else:
+            sequence_number = "".join(key_letter_list[18:-1])
+        output = ("Epoch:%s; Direction:%s, Spatial frequency:%s, Phase:%s, Trial #:%s" % (epoch, direction, spatial_frequency, phase, sequence_number))
+        return output
+    else:
+        temporal_frequency = "".join(temp)
+        if len(key_letter_list)==13:
+            sequence_number = key_letter_list[11]
+        else:
+            sequence_number = "".join(key_letter_list[11:-1])
+        output = ("Epoch:%s; Direction:%s, Temporal frequency:%s, Trial #:%s" % (epoch, direction, temporal_frequency, sequence_number))
+        return output
