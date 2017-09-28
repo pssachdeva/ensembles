@@ -413,7 +413,7 @@ def get_session_ids_list (exps, session_ids):
             session_ids_list.append(value)
     return session_ids_list
 
-def get_stim_table(session_ids_list):
+def get_stim_table(boc, session_ids_list):
     '''Creates a dictionary whose keys are experiment container ids and values are the epoch table corresponding to that experiment. 
     
     Parameters
@@ -429,9 +429,9 @@ def get_stim_table(session_ids_list):
     epoch_table: 
         list of epochs (stimulus type for session type A, B, or C) with start and stop frame numbers for each epoch
     '''
-    pair_table = {}
+    stim_table = {}
     for session_id in session_ids_list:
-        pair_table[session_id]={}
+        stim_table[session_id]={}
         
         dataset = boc.get_ophys_experiment_data(ophys_experiment_id = session_id)
         
@@ -439,10 +439,10 @@ def get_stim_table(session_ids_list):
         
         if session_type == 'A':
             # extract the epoch table using the provided function
-            pair_table[session_id]['drifting_gratings']=dataset.get_stimulus_table(stimulus_name='drifting_gratings')
+            stim_table[session_id]['drifting_gratings']=dataset.get_stimulus_table(stimulus_name='drifting_gratings')
         
         elif session_type == 'B':
-            pair_table[session_id]['static_gratings']=dataset.get_stimulus_table(stimulus_name='static_gratings')
+            stim_table[session_id]['static_gratings']=dataset.get_stimulus_table(stimulus_name='static_gratings')
         
         else:
             # session C has no inter-stim interval right after drifting/static gratings
