@@ -638,3 +638,174 @@ def get_pair_table(boc, session_ids_list, stim_table, interstim_traces):
                 pair_table[session_id][sg2name]=interstim_traces[session_id]['static_gratings_2_all'][:, start:end]
                 
     return pair_table
+
+def get_pair_table_index(boc, session_ids_list, stim_table, interstim_traces):
+    pair_table={}
+    for session_id in session_ids_list:
+        pair_table[session_id]={}
+        dataset = boc.get_ophys_experiment_data(ophys_experiment_id = session_id)
+        
+        
+        if np.size(stim_table[session_id]['drifting_gratings'])>1:
+            nanrows=(stim_table[session_id]['drifting_gratings']['orientation']).isnull()
+            stim_table[session_id]['drifting_gratings']['nanrows']=nanrows
+            curr=stim_table[session_id]['drifting_gratings'][(stim_table[session_id]['drifting_gratings']['nanrows']==False)]
+            
+            # start_timestamp=int(curr['start'][0])
+            # end_timestamp=int(curr['end'][len(curr)])
+            
+            for i in curr.iterrows():
+                name='dg_'
+    
+                direction=curr['orientation'][i[0]]
+                direct=str(int(direction))
+                if len(direct)==1:
+                    direct='00'+ direct
+                elif len(direct)==2:
+                    direct='0'+ direct
+                name = name + (direct + '_')
+                
+                tff=curr['temporal_frequency'][i[0]]
+                tf=str(curr['temporal_frequency'][i[0]])
+                if len(tf)==1:
+                    direction='00'+str(tf)
+                elif len(tf)==2:
+                    direction='0'+str(tf)
+                name = name + (str(tf))
+                
+                if name not in pair_table[session_id].keys():
+                    pair_table[session_id][name]={}
+                
+                currtemp=curr[curr['orientation']==direction]
+                currtemp=currtemp[currtemp['temporal_frequency']==tff]
+                
+                seq_nu=1
+                for ii in currtemp.iterrows():
+                    if currtemp['start'][i[0]] == currtemp['start'][ii[0]]:
+                        seq_num = seq_nu
+                        break
+                        
+                    else:
+                        seq_nu+=1
+                
+                start=(curr['start'][i[0]])
+                end=curr['end'][i[0]]
+                
+                pair_table[session_id][name][seq_num]=interstim_traces[session_id]['drifting_gratings_all'][:, start:end]
+            
+        elif np.size(stim_table[session_id]['static_gratings'])>1:
+            nanrows=(stim_table[session_id]['static_gratings']['orientation']).isnull()
+            stim_table[session_id]['static_gratings']['nanrows']=nanrows
+            curr=stim_table[session_id]['static_gratings'][(stim_table[session_id]['static_gratings']['nanrows']==False)]
+               
+            for i in curr.iterrows():
+                name='sg_'
+                
+                direction=curr['orientation'][i[0]]
+                direct=str(int(direction))
+                if len(direct)==1:
+                    direct='00'+ direct
+                elif len(direct)==2:
+                    direct='0'+ direct
+                name = name + (direct + '_')
+                
+                sff=curr['spatial_frequency'][i[0]]
+                sf=str(curr['spatial_frequency'][i[0]])
+                name = name + (str(sf) + '_')
+                
+                phase=curr['phase'][i[0]]
+                name = name + (str(phase)) 
+                
+                seq=curr[curr['orientation']==direction]
+                currtemp=curr[curr['spatial_frequency']==sff]
+                currtemp=currtemp[currtemp['phase']==phase]
+                
+                seq_nu=1
+                for ii in currtemp.iterrows():
+                    if currtemp['start'][i[0]] == currtemp['start'][ii[0]]:
+                        seq_num = seq_nu
+                        break
+                        
+                    else:
+                        seq_nu+=1
+                
+                start=curr['start'][i[0]]
+                end=curr['end'][i[0]]
+                
+                sg1name=name[:2] + '1' + name[2:]
+                sg2name=name[:2] + '2' + name[2:]
+                if sg1name not in pair_table[session_id].keys():
+                    pair_table[session_id][sg1name]={}
+                if sg2name not in pair_table[session_id].keys():
+                    pair_table[session_id][sg2name]={}
+                
+                pair_table[session_id][sg1name][seq_num]=interstim_traces[session_id]['static_gratings_1_all'][:, start:end]
+                pair_table[session_id][sg2name][seq_num]=interstim_traces[session_id]['static_gratings_2_all'][:, start:end]
+        
+    return pair_table
+
+def get_pop_vectors(boc, session_ids_list, pair_table_index):
+    population_vectors={}
+    for session_id in session_ids_list:
+        population_vectors[session_id]={}
+    
+        for stim_type, value in pair_table_index[session_id].iteritems():
+            population_vectors[session_id][stim_type]={}
+        
+            for sequence_num, cell_traces in pair_table_index[session_id][stim_type].iteritems():
+                network = np.vstack(cell_traces)
+                population_vectors[session_id][stim_type][sequence_num] = np.mean(network, axis=0)
+    return population_vectors
+
+def get_train_and_test_datasets(boc, session_ids_list, population_vectors):
+    train_test={}
+    
+    train_test['dg_test_data']={}
+    train_test['dg_train_data']={}
+    train_test['sg_test_data']={}
+    train_test['sg_train_data']={}
+    
+    for session_id in session_ids_list:
+        train_test['dg_test_data'][session_id]={}
+        train_test['dg_train_data'][session_id]={}
+        train_test['sg_test_data'][session_id]={}
+        train_test['sg_train_data'][session_id]={}
+        for stim_type, trials in population_vectors[session_id].iteritems():
+             
+            if stim_type[0]=='d':
+                x=1 #set an indexer for dividing
+                #if stim_type not in train_test['dg_test_data'][session_id].keys():
+                    #train_test['dg_test_data'][session_id][stim_type]=[]
+                    #train_test['dg_train_data'][session_id][stim_type]=[]
+                dgtrain=[]
+                dgtest=[]
+                    
+                for index_num, X in trials.iteritems():
+                    if (x%2)!=0:
+                        dgtrain.append(X)
+                    else:
+                        dgtest.append(X)
+                        
+                    x+=1
+                    train_test['dg_test_data'][session_id][stim_type]=dgtrain
+                    train_test['dg_train_data'][session_id][stim_type]=dgtest
+                    
+            else:
+                x=1 #set an indexer for dividing
+                #if stim_type not in train_test['sg_test_data'][session_id].keys():
+                    #train_test['sg_test_data'][session_id][stim_type]=p[]
+                    #train_test['sg_train_data'][session_id][stim_type]=[]
+                sgtrain=[]
+                sgtest=[]
+                for index_num, X in trials.iteritems():
+                    if (x%2)!=0:
+                        sgtrain.append(X)
+                        
+                    else:
+                        sgtest.append(X)
+                    x+=1
+                    train_test['sg_test_data'][session_id][stim_type]=sgtrain
+                    train_test['sg_train_data'][session_id][stim_type]=sgtest
+       
+    return train_test
+
